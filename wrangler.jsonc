@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "docs",
+  "main": "src/index.js",
+  "compatibility_date": "2026-06-17",
+
+  // Static assets (CSS, favicon, logo) are served through the asset store; the
+  // worker resolves their URLs via env.ASSETS.url() (WDL-only — under local
+  // `wrangler dev` it falls back to root-relative paths, which only resolve
+  // when something serves public/).
+  "assets": {
+    "directory": "./public"
+  },
+
+  // Custom routing is operator-enabled per namespace, and wdl.md is declared
+  // for this one — so the route below is which of the namespace's workers the
+  // host resolves to, not a claim on the host itself.
+  "routes": [
+    "wdl.md/*"
+  ]
+}

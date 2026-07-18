@@ -1,0 +1,14 @@
+node_modules/
+.deploy-dist/
+# CI clones the source repos here for build-content --repos-dir
+repos/
+# Generated corpus — CI rebuilds it from fresh clones for every deploy
+src/content.gen.js
+.wrangler/
+.wrangler.wdl-tmp*.json
+*.log
+
+# Never commit tenant credentials
+.env
+.env.*
+!.env.example

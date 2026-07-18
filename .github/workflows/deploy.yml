@@ -1,0 +1,56 @@
+# Builds src/content.gen.js from fresh clones of the source repos, tests, and
+# deploys the worker. The generated corpus never enters git: every deploy
+# regenerates it, so freshness = the newest run (push to main, the daily
+# schedule, or a manual dispatch as the "deploy now" button).
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "43 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build content and deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Production only ever ships main: workflow_dispatch accepts any ref, and
+    # without this a dispatch from a topic branch would deploy that branch.
+    if: github.ref == 'refs/heads/main'
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/build
+
+      - name: Deploy
+        env:
+          ADMIN_TOKEN: ${{ secrets.WDL_DEPLOY_TOKEN }}
+          CONTROL_URL: ${{ vars.CONTROL_URL || 'api.wdl.dev' }}
+          WDL_TOKEN_STORE: "off"
+        run: |
+          if [ -z "$ADMIN_TOKEN" ]; then
+            echo "WDL_DEPLOY_TOKEN secret is required to deploy." >&2
+            exit 1
+          fi
+          npm run deploy
+
+      # Housekeeping, not part of the release: the deploy above is already live,
+      # so a failure here is surfaced without failing the run.
+      - name: Prune superseded versions
+        continue-on-error: true
+        env:
+          ADMIN_TOKEN: ${{ secrets.WDL_DEPLOY_TOKEN }}
+          CONTROL_URL: ${{ vars.CONTROL_URL || 'api.wdl.dev' }}
+          WDL_TOKEN_STORE: "off"
+          WDL_NS: site
+        run: npm run prune

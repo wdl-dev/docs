@@ -1,0 +1,349 @@
+/* wdl.md — shares the wdl.dev palette so the two domains read as one system. */
+
+/* ---- tokens ----
+   Colors are light-dark() pairs: the OS preference picks the scheme, and
+   html[data-theme] (set by the toggle, restored pre-paint) forces one side.
+   One palette, no duplicated dark block. */
+:root {
+  color-scheme: light dark;
+  --paper: light-dark(#ebebe6, #0d0e11);
+  --raised: light-dark(#f3f3ee, #15171c);
+  --ink: light-dark(#15171c, #e9e9e3);
+  --muted: light-dark(#5a5f67, #9298a1);
+  --faint: light-dark(#62676f, #7a7f88);
+  --line: light-dark(#d4d4cd, #23252c);
+  --accent: light-dark(#2436e8, #7b8fff);
+  --inset-bg: light-dark(#14161a, #05060a);
+  --inset-fg: #e8e8e2;
+  --inset-muted: light-dark(#8a8f99, #7f8590);
+
+  /* Every offset against the sticky bar derives from --bar-h; a mismatched
+     sticky top makes the nav drop the moment the page scrolls. 48px is a
+     whole device pixel at the 1.25/1.5/1.75 Windows display scales. */
+  --bar-h: 48px;
+  --side-w: 15.5rem;
+  --gap: 2.5rem;
+  --prose-w: 66rem;
+  --pad: 24px;
+  /* The shell hugs the real content — anything wider leaves a dead rail under
+     the top-right links. The side padding is part of the sum because
+     box-sizing:border-box would otherwise take it out of the prose column. */
+  --maxw: calc(var(--side-w) + var(--gap) + var(--prose-w) + 2 * var(--pad));
+
+  --mono: ui-monospace, "SFMono-Regular", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+/* ---- base ---- */
+* { box-sizing: border-box; }
+/* overflow-y:scroll, not scrollbar-gutter: a reserved gutter and a real
+   scrollbar can round to different device pixels at fractional display
+   scales, sub-pixel-shifting the layout between the short index and the
+   scrolling articles. An always-on scrollbar is always equal. */
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--bar-h) + 14px); overflow-y: scroll; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 16px/1.65 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+a { color: inherit; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+/* ---- top bar ---- */
+.top {
+  position: sticky; top: 0; z-index: 10;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+/* Fixed height: the zh lang link's CJK fallback font has a taller ascent than
+   the Latin UI font, and a content-sized bar would grow with it. */
+.top-inner {
+  max-width: var(--maxw); margin: 0 auto; padding: 0 var(--pad); height: calc(var(--bar-h) - 1px);
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  /* The only animated layout on the site: toggling the sidebar re-centers the
+     bar, sliding the brand and links between the framed and prose-aligned
+     positions. Everything else about that toggle — sidebar, prose column,
+     drawer — snaps. Only controls animate their own state, never the page. */
+  transition: max-width 0.2s ease;
+}
+@media (prefers-reduced-motion: reduce) { .top-inner { transition: none; } }
+/* The bar hugs the effective content: the full frame beside a sidebar, the
+   centered prose column alone without one (.narrow = no sidebar served,
+   data-nav = sidebar toggled away). */
+.top-inner.narrow, html[data-nav="hidden"] .top-inner {
+  max-width: calc(var(--prose-w) + 2 * var(--pad));
+}
+.brand { font: 650 1.15rem/1 var(--mono); letter-spacing: -0.02em; text-decoration: none; }
+.brand .tld { color: var(--accent); }
+.top-links { display: flex; align-items: center; gap: 18px; font: 500 0.86rem/1 var(--sans); }
+.top-links a { text-decoration: none; color: var(--muted); }
+.top-links .lang { color: var(--accent); }
+
+.theme-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; padding: 0; border: 0; border-radius: 6px;
+  background: none; color: var(--muted); cursor: pointer;
+  /* Its hit area is wider than its glyph; pull the last icon back so the
+     glyph sits flush with the prose right edge below. */
+  margin-right: -7px;
+}
+/* The theme toggle shows the mode a click switches TO: moon while light,
+   sun while dark. Without data-theme the effective mode is the system's. */
+.theme-toggle svg { display: none; }
+html[data-theme="light"] .t-dark { display: block; }
+html[data-theme="dark"] .t-light { display: block; }
+@media (prefers-color-scheme: dark) { html:not([data-theme]) .t-light { display: block; } }
+@media (prefers-color-scheme: light) { html:not([data-theme]) .t-dark { display: block; } }
+
+/* ---- frame: sidebar + prose ---- */
+.frame {
+  max-width: var(--maxw); margin: 0 auto; padding: 0 var(--pad);
+  display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); gap: var(--gap);
+}
+/* Explicit areas: the collapse handle shares the sidebar's cell. */
+.side, .frame > .nav-toggle { grid-area: 1 / 1; }
+.prose { grid-area: 1 / 2; }
+
+/* The collapse handle floats over the sidebar's right border, just below the
+   bar; hidden state parks it at the frame's left edge as the reopen affordance
+   and flips the chevron. */
+.frame > .nav-toggle {
+  position: sticky; top: calc(var(--bar-h) + 10px);
+  align-self: start; justify-self: end; z-index: 5;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; padding: 0; margin-right: -13px;
+  border: 1px solid var(--line); border-radius: 50%;
+  background: var(--paper); color: var(--faint); cursor: pointer;
+}
+.nav-toggle svg { transition: transform 0.15s ease; }
+/* The desktop handle sits beside a sidebar that is already visible, so the
+   chevron alone is enough there. */
+.nav-text { display: none; }
+html[data-nav="hidden"] .nav-toggle svg { transform: rotate(180deg); }
+html[data-nav="hidden"] .frame > .nav-toggle { justify-self: start; margin: 0 0 0 calc(-1 * var(--pad)); }
+
+/* data-nav is restored on <html> pre-paint, so a hidden sidebar never
+   flashes in. The home page ships no sidebar at all (.solo). Centering comes
+   from the track, not auto margins — margin:auto would put the item on
+   shrink-to-fit sizing, whose min-content floor overflows phone viewports. */
+html[data-nav="hidden"] .side { display: none; }
+html[data-nav="hidden"] .frame, .frame.solo {
+  grid-template-columns: minmax(0, var(--prose-w));
+  justify-content: center;
+}
+html[data-nav="hidden"] .prose, .solo .prose { grid-area: 1 / 1; }
+
+.side {
+  /* Shifted 10px left and padded back: the pills bleed left of the text line,
+     and the bleed must stay inside this box's overflow clip region. */
+  margin-left: -10px;
+  padding: 28px 0 48px 10px;
+  border-right: 1px solid var(--line);
+  font-size: 0.88rem;
+  position: sticky; top: var(--bar-h); align-self: start;
+  max-height: calc(100vh - var(--bar-h));
+  /* Long titles ellipsize, never a horizontal scrollbar. The vertical one is
+     thin (its gutter is constant, so revealing it cannot shift layout) and
+     invisible until hover — classic-scrollbar platforms get the same quiet
+     rail macOS overlay scrollbars give for free. */
+  overflow-y: auto; overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: transparent transparent;
+  /* Scrollable pages composite the sticky nav on its own layer, short ones
+     paint it in flow, and the two paths snap the hairline border to different
+     device pixels at fractional display scales. Promote it everywhere. */
+  transform: translateZ(0);
+}
+.side:focus-within { scrollbar-color: var(--line) transparent; }
+.nav-label {
+  font: 500 0.68rem/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--faint); margin: 0 10px 10px 0;
+}
+/* Groups separate by whitespace plus a hairline, so the section labels read
+   as headings rather than as one more list row. */
+.nav-group + .nav-group .nav-label {
+  margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line);
+}
+.side ul { list-style: none; margin: 0; padding: 0; }
+.side li a {
+  display: block; padding: 4px 10px; margin: 0 10px 0 -10px; border-radius: 6px;
+  text-decoration: none; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.side li a[aria-current="page"] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
+}
+
+/* ---- prose ---- */
+/* min-width:0 — a grid item's auto minimum inflates to the widest scroll
+   container's content (curl inset, tables), overflowing phone viewports. */
+.prose { padding: 34px 0 40px; max-width: var(--prose-w); min-width: 0; }
+.prose h1 {
+  font: 640 clamp(1.7rem, 4vw, 2.3rem)/1.15 var(--sans);
+  letter-spacing: -0.03em; margin: 0 0 18px; text-wrap: balance;
+}
+.prose h2 {
+  font: 620 1.32rem/1.3 var(--sans); letter-spacing: -0.02em;
+  margin: 40px 0 12px; padding-top: 18px; border-top: 1px solid var(--line);
+}
+.prose h3 { font: 620 1.08rem/1.4 var(--sans); margin: 28px 0 8px; }
+.prose h4, .prose h5, .prose h6 { font: 620 0.95rem/1.4 var(--sans); margin: 22px 0 6px; }
+.prose p { margin: 0 0 14px; text-wrap: pretty; }
+.prose a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; }
+.prose code {
+  font: 0.88em/1.4 var(--mono); background: var(--raised);
+  border: 1px solid var(--line); padding: 1px 5px; border-radius: 4px;
+}
+.prose pre {
+  background: var(--inset-bg); color: var(--inset-fg);
+  border-radius: 6px; padding: 14px 18px; overflow-x: auto;
+  font: 0.86rem/1.6 var(--mono); margin: 0 0 16px;
+}
+.prose pre code { background: none; border: 0; padding: 0; font: inherit; color: inherit; }
+.prose ul, .prose ol { margin: 0 0 14px; padding-left: 1.4rem; }
+.prose li { margin: 3px 0; }
+.prose blockquote {
+  margin: 0 0 14px; padding: 2px 18px; border-left: 3px solid var(--accent);
+  background: var(--raised); border-radius: 0 6px 6px 0; color: var(--muted);
+}
+.prose hr { border: 0; border-top: 1px solid var(--line); margin: 28px 0; }
+/* The heading itself is the link, so it must not look like one. The trailing
+   mark is the only visible cue: faint, since a touch reader has no hover to
+   reveal it with, and never part of a copied heading. */
+.prose .anchor { color: inherit; text-decoration: none; }
+.prose .anchor .mark {
+  margin-left: 0.35em; color: var(--faint); opacity: 0.3;
+  font-weight: 400; user-select: none;
+}
+.prose .anchor:focus-visible .mark { opacity: 1; }
+.table-wrap { overflow-x: auto; margin: 0 0 16px; }
+/* Dense enough that the six-column compatibility matrix fits the prose column
+   with the sidebar open on a 1440-wide screen. */
+.prose table { border-collapse: collapse; font-size: 0.85rem; min-width: 100%; }
+.prose th, .prose td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+.prose th { background: var(--raised); font-weight: 620; }
+.edit-row { margin: 28px 0 0; font: 0.82rem/1 var(--mono); }
+.edit-row a { color: var(--faint); text-decoration: none; }
+.doc-foot {
+  margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: baseline; gap: 1.5rem;
+  /* The colophon appears when the prose column can hold both lines side by
+     side. That depends on the column, not the viewport — collapsing the
+     sidebar widens it at the same window size — so the query asks the column. */
+  container-type: inline-size;
+}
+.doc-foot p, .colophon { color: var(--faint); font: 0.8rem/1.6 var(--mono); margin: 0; }
+.colophon { display: none; white-space: nowrap; }
+@container (min-width: 54rem) { .colophon { display: block; } }
+.doc-foot a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--line); }
+
+/* ---- home ---- */
+.hero { padding: 20px 0 8px; }
+.eyebrow {
+  font: 500 0.74rem/1 var(--mono); letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--accent); margin: 0 0 18px;
+}
+.hero h1 {
+  font: 640 clamp(2.1rem, 6vw, 3.2rem)/1.05 var(--sans);
+  letter-spacing: -0.035em; margin: 0; text-wrap: balance;
+}
+.hero .sub { margin: 20px 0 0; font-size: 1.08rem; color: var(--muted); text-wrap: pretty; }
+.inset {
+  margin: 28px 0 0; background: var(--inset-bg); color: var(--inset-fg);
+  border-radius: 6px; padding: 11px 20px;
+  font: 0.92rem/1.7 var(--mono); overflow-x: auto;
+  scrollbar-width: thin; scrollbar-color: var(--inset-muted) transparent;
+}
+.inset .line { white-space: nowrap; }
+.inset .prompt { color: var(--inset-muted); user-select: none; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 12px; margin: 30px 0 0; }
+.card {
+  display: flex; flex-direction: column; gap: 6px;
+  border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px;
+  text-decoration: none; background: var(--raised);
+  transition: border-color 0.15s ease;
+}
+.card-head { font: 620 1rem/1.2 var(--sans); letter-spacing: -0.01em; }
+.card-sub { font: 0.82rem/1.5 var(--sans); color: var(--muted); }
+
+/* The mobile drawer's scrim exists only there (see the compact block). */
+.scrim { display: none; }
+
+/* ---- hover ----
+   Withheld only from devices that say they cannot hover: a touch screen keeps
+   the last tapped element in :hover until something else is tapped, which
+   leaves the drawer button looking pressed long after it was released.
+   Phrased as a negation so anything that does not answer keeps its hover. */
+@media not all and (hover: none) {
+  .top-links a:hover { color: var(--accent); }
+  .theme-toggle:hover { color: var(--ink); background: var(--raised); }
+  .frame > .nav-toggle:hover { color: var(--accent); border-color: var(--accent); }
+  .side:hover { scrollbar-color: var(--line) transparent; }
+  .side li a:hover { color: var(--ink); background: var(--raised); }
+  .prose a:hover { border-bottom-color: var(--accent); }
+  .prose .anchor:hover .mark { opacity: 1; color: var(--accent); }
+  .edit-row a:hover { color: var(--accent); }
+  .doc-foot a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+  .card:hover { border-color: var(--accent); }
+}
+
+/* ---- compact screens ---- */
+@media (max-width: 860px) {
+  .frame { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .prose { grid-area: 1 / 1; padding-top: 24px; }
+  /* The nav becomes a transient drawer (default closed, data-nav ignored)
+     opened by a floating button: stacking the whole page list above every
+     article is not a phone layout. Navigating reloads, which closes it.
+     Stacking order below is scrim 19 < drawer 20 < button 21. */
+  .side, html[data-nav="hidden"] .side { display: none; }
+  html[data-drawer="open"] .side {
+    display: block; position: fixed; z-index: 20;
+    top: var(--bar-h); left: 0; bottom: 0;
+    /* align-self:start (needed by the desktop sticky layout) also applies to
+       this fixed box and would size it to its content, defeating top/bottom
+       and with them the drawer's own scrolling. */
+    align-self: stretch;
+    width: min(20rem, 85vw);
+    margin: 0; padding: 20px 16px 20px 26px;
+    max-height: none;
+    background: var(--paper);
+    box-shadow: 0 12px 40px color-mix(in srgb, #000 35%, transparent);
+  }
+  /* Here the sidebar is hidden, so this button is the only way to the rest of
+     the site. It says what it is and wears the accent colour, because a faint
+     circle holding one chevron is neither findable nor self-explanatory. */
+  .frame > .nav-toggle, html[data-nav="hidden"] .frame > .nav-toggle {
+    position: fixed; top: auto; bottom: 18px; left: auto; right: 18px;
+    margin: 0; width: auto; height: 44px; padding: 0 16px; gap: 8px;
+    border-radius: 22px; border-color: var(--accent); color: var(--accent);
+    font: 500 0.9rem/1 var(--sans); z-index: 21;
+    box-shadow: 0 6px 24px color-mix(in srgb, #000 30%, transparent);
+  }
+  .nav-text { display: inline; }
+  /* Once the drawer is open the label is redundant — the nav is on screen —
+     and the button becomes a plain close affordance. */
+  html[data-drawer="open"] .frame > .nav-toggle { width: 44px; padding: 0; }
+  html[data-drawer="open"] .nav-text { display: none; }
+  /* Closed, the chevron points at the edge the drawer arrives from; open, it
+     points back the way the drawer leaves. */
+  .nav-toggle svg { transform: rotate(0deg); }
+  html[data-drawer="open"] .nav-toggle svg { transform: rotate(180deg); }
+  /* Scrim behind the open drawer: dims and absorbs taps on the content
+     (tapping it closes the drawer) and, with the scroll lock below, stops
+     the page scrolling behind the overlay. */
+  html[data-drawer="open"] .scrim {
+    display: block; position: fixed; inset: var(--bar-h) 0 0; z-index: 19;
+    background: color-mix(in srgb, #000 45%, transparent);
+  }
+  /* overflow-y only, with the gutter still reserved: the `overflow` shorthand
+     would cancel the always-on scrollbar above and shift the page sideways
+     the moment the drawer opens. */
+  html[data-drawer="open"] { overflow-y: hidden; scrollbar-gutter: stable; }
+}

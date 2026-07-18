@@ -1,0 +1,44 @@
+# The corpus never enters git, so CI and deploy both have to clone the source
+# repos and regenerate it. Keeping that in one composite action stops the two
+# workflows from drifting into building different things.
+name: Build content
+description: Clone the source repos, generate src/content.gen.js, test and bundle-check.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v6
+      with:
+        repository: wdl-dev/wdl
+        path: repos/wdl
+        persist-credentials: false
+    - uses: actions/checkout@v6
+      with:
+        repository: wdl-dev/cli
+        path: repos/cli
+        persist-credentials: false
+    - uses: actions/checkout@v6
+      with:
+        repository: wdl-dev/aws-sigv4
+        path: repos/aws-sigv4
+        persist-credentials: false
+    - uses: actions/checkout@v6
+      with:
+        repository: wdl-dev/chat
+        path: repos/chat
+        persist-credentials: false
+
+    - uses: actions/setup-node@v6
+      with:
+        node-version: "22"
+        cache: npm
+        cache-dependency-path: package-lock.json
+
+    - run: npm ci
+      shell: bash
+    - run: node scripts/build-content.mjs --repos-dir repos
+      shell: bash
+    - run: npm test
+      shell: bash
+    - run: npm run dry-run
+      shell: bash
