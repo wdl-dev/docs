@@ -195,6 +195,8 @@ html[data-nav="hidden"] .prose, .solo .prose { grid-area: 1 / 1; }
 }
 .prose h3 { font: 620 1.08rem/1.4 var(--sans); margin: 28px 0 8px; }
 .prose h4, .prose h5, .prose h6 { font: 620 0.95rem/1.4 var(--sans); margin: 22px 0 6px; }
+/* Out-specifies a bare class, so a styled <p> in here needs `.prose` on its
+   selector too or its own margin is silently dropped. */
 .prose p { margin: 0 0 14px; text-wrap: pretty; }
 .prose a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; }
 .prose code {
@@ -229,10 +231,19 @@ html[data-nav="hidden"] .prose, .solo .prose { grid-area: 1 / 1; }
 .prose table { border-collapse: collapse; font-size: 0.85rem; min-width: 100%; }
 .prose th, .prose td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
 .prose th { background: var(--raised); font-weight: 620; }
-.edit-row { margin: 28px 0 0; font: 0.82rem/1 var(--mono); }
+/* Same shape as the footer one line below, so the two right-hand items line up.
+   Wraps rather than hides when narrow — a version is content, not a colophon —
+   and the row gap, not the line height, is what separates the wrapped lines. */
+.prose .edit-row {
+  margin: 40px 0 0; font: 0.82rem/1 var(--mono);
+  display: flex; flex-wrap: wrap; justify-content: space-between;
+  align-items: baseline; gap: 0.6rem 1.5rem;
+}
 .edit-row a { color: var(--faint); text-decoration: none; }
 .doc-foot {
-  margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
+  /* Equal above and below, so the rule reads as dividing one block rather
+     than as the top of the next. */
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);
   display: flex; justify-content: space-between; align-items: baseline; gap: 1.5rem;
   /* The colophon appears when the prose column can hold both lines side by
      side. That depends on the column, not the viewport — collapsing the
@@ -246,7 +257,7 @@ html[data-nav="hidden"] .prose, .solo .prose { grid-area: 1 / 1; }
 
 /* ---- home ---- */
 .hero { padding: 20px 0 8px; }
-.eyebrow {
+.prose .eyebrow {
   font: 500 0.74rem/1 var(--mono); letter-spacing: 0.18em; text-transform: uppercase;
   color: var(--accent); margin: 0 0 18px;
 }

@@ -3,6 +3,7 @@
 //
 //   node scripts/build-content.mjs [--repos-dir <dir>]
 
+import { execFileSync } from "node:child_process";
 import { readFile, readdir, writeFile, access } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,6 +23,41 @@ const reposArg = inlineArg
 const REPOS_DIR = reposArg ? path.resolve(reposArg) : path.resolve(ROOT, "..");
 
 const exists = (p) => access(p).then(() => true, () => false);
+
+const ORG = "https://github.com/wdl-dev";
+
+// ---- where a repo's docs came from ----
+// Asked of the checkout rather than passed in by CI, so the version a page
+// claims is the one it was actually built from: a wrong `ref` shows up on the
+// page instead of being papered over.
+
+const gitIn = (repo, args) => {
+  try {
+    return execFileSync("git", ["-C", path.join(REPOS_DIR, repo), ...args], {
+      encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "";
+  }
+};
+
+// Four repos, one answer each, asked once — every page would otherwise spawn
+// its own git.
+const refCache = new Map();
+
+function refFor(repo) {
+  if (refCache.has(repo)) return refCache.get(repo);
+  const tag = gitIn(repo, ["describe", "--tags", "--exact-match", "HEAD"]);
+  const named = tag || gitIn(repo, ["rev-parse", "--abbrev-ref", "HEAD"]);
+  // "HEAD" means detached with no tag on it; the sha is all there is to say.
+  const ref = (named === "HEAD" ? gitIn(repo, ["rev-parse", "--short", "HEAD"]) : named) || "main";
+  const resolved = {
+    ref,
+    refUrl: tag ? `${ORG}/${repo}/releases/tag/${ref}` : `${ORG}/${repo}/tree/${ref}`,
+  };
+  refCache.set(repo, resolved);
+  return resolved;
+}
 
 // ---- what to publish ----
 // Curated order, because a docs site is a reading order and readdir is not one.
@@ -179,17 +215,19 @@ async function loadPair(repo, enPath, zhPath) {
 // Every page is known by the time this runs, so a cross-doc link becomes a site
 // route here rather than a guess at request time.
 
-const ORG = "https://github.com/wdl-dev";
 const SITE_ORIGIN = "https://wdl.md";
 const pageUrl = (slug, lang) => `${SITE_ORIGIN}${lang === "zh" ? "/zh" : ""}/${slug}`;
 
 export function makeIndex(pages) {
   const bySource = new Map();
+  // Carried on the pages rather than looked up here: the resolver must be a
+  // function of what it is handed, not of the checkout it happens to run beside.
+  const refs = new Map(pages.filter((p) => p.ref).map((p) => [p.repo, p.ref]));
   for (const p of pages) {
     bySource.set(`${p.repo}:${p.path}`, { slug: p.slug, zh: false, hasZh: Boolean(p.zhSource) });
     if (p.zhPath) bySource.set(`${p.repo}:${p.zhPath}`, { slug: p.slug, zh: true, hasZh: true });
   }
-  return { bySource, repos: new Set(pages.map((p) => p.repo)) };
+  return { bySource, refs, repos: new Set(pages.map((p) => p.repo)) };
 }
 
 /**
@@ -197,7 +235,7 @@ export function makeIndex(pages) {
  * aggregated points at the file on GitHub instead of 404ing; `absolute` gives
  * the agent copy full `https://wdl.md/…​.md` URLs instead of site routes.
  */
-export function makeResolveLink({ bySource, repos }, page, lang, absolute) {
+export function makeResolveLink({ bySource, repos, refs }, page, lang, absolute) {
   // Resolve against the file being rendered: a zh doc's relative links are
   // relative to the zh source, not to its English sibling.
   const from = (lang === "zh" && page.zhPath) || page.path;
@@ -216,7 +254,7 @@ export function makeResolveLink({ bySource, repos }, page, lang, absolute) {
     const [repo, filePath] = repos.has(head) && rest.length ? [head, rest.join("/")] : [page.repo, full];
 
     const hit = bySource.get(`${repo}:${filePath}`);
-    if (!hit) return `${ORG}/${repo}/blob/main/${filePath}${query}${frag}`;
+    if (!hit) return `${ORG}/${repo}/blob/${refs.get(repo) ?? "main"}/${filePath}${query}${frag}`;
     // Reading in Chinese keeps you in Chinese, and only where that page has a
     // Chinese variant. The exception is a link to this same page's English
     // source: that is the doc's own language switcher ("[English](./token.md) |
@@ -238,7 +276,8 @@ function agentMarkdown(index, page, lang, source, title, sourcePath) {
   const front = [
     "---",
     `title: ${yamlStr(title)}`,
-    `source: ${ORG}/${page.repo}/blob/main/${sourcePath}`,
+    `source: ${ORG}/${page.repo}/blob/${page.ref}/${sourcePath}`,
+    `ref: ${yamlStr(page.ref)}`,
     `canonical: ${pageUrl(page.slug, lang)}`,
     "---",
   ].join("\n");
@@ -250,8 +289,9 @@ async function main() {
   const pages = [];
   const push = async (section, slug, repo, enPath, zhPath) => {
     const { en, zh } = await loadPair(repo, enPath, zhPath);
+    const { ref, refUrl } = refFor(repo);
     pages.push({
-      slug, section, repo,
+      slug, section, repo, ref, refUrl,
       path: enPath,
       zhPath: zh ? zhPath : null,
       enSource: en,
@@ -321,6 +361,8 @@ async function main() {
       slug: p.slug,
       section: p.section,
       repo: p.repo,
+      ref: p.ref,
+      refUrl: p.refUrl,
       en: one("en", p.enSource, p.path),
       zh: p.zhSource ? one("zh", p.zhSource, p.zhPath) : null,
     };

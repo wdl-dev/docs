@@ -71,8 +71,16 @@ const [token, , sigv4] = PAGES;
 
 test("a relative target becomes a site route; an unaggregated one goes to GitHub", () => {
   assert.equal(resolve(token, "en")("./deploy.md"), "/cli/deploy");
+  // No ref on these fixtures, so the fallback branch is what is linked.
   assert.equal(resolve(token, "en")("../CHANGELOG.md"),
     "https://github.com/wdl-dev/cli/blob/main/CHANGELOG.md");
+});
+
+test("a repo's ref comes off the pages, not off the checkout beside them", () => {
+  // Otherwise this resolver would answer differently on different machines.
+  const pinned = PAGES.map((p) => ({ ...p, ref: "v9.9.9" }));
+  const out = makeResolveLink(makeIndex(pinned), pinned[0], "en", false)("../CHANGELOG.md");
+  assert.equal(out, "https://github.com/wdl-dev/cli/blob/v9.9.9/CHANGELOG.md");
 });
 
 test("reading in zh stays in zh, except the page's own English source", () => {

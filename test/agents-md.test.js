@@ -21,8 +21,12 @@ test(".md suffix returns markdown with frontmatter and source pointer", async ()
   assert.equal(res.headers.get("content-type"), "text/markdown; charset=utf-8");
   const body = await res.text();
   assert.ok(body.startsWith("---\ntitle: "));
-  assert.ok(body.includes("source: https://github.com/wdl-dev/wdl/blob/main/docs/architecture.md"));
   assert.ok(body.includes("canonical: https://wdl.md/platform/architecture"));
+  // Both pin the ref the text came from — a release tag in CI, a branch
+  // locally — so neither may be hardcoded here.
+  const ref = PAGES.find((p) => p.slug === "platform/architecture").ref;
+  assert.ok(body.includes(`ref: "${ref}"`));
+  assert.ok(body.includes(`source: https://github.com/wdl-dev/wdl/blob/${ref}/docs/architecture.md`));
 });
 
 test("Accept: text/markdown negotiates markdown; text/html stays HTML; both Vary", async () => {

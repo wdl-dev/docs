@@ -301,6 +301,8 @@ ${body}
 
 export function renderDocPage(page, lang, assets) {
   const { html, title, path, summary } = variant(page, lang);
+  // main, not page.ref: the link offers to edit, and a tag has no branch to
+  // commit the edit to. The version beside it is where the text came from.
   const editUrl = `${ORG}/${page.repo}/blob/main/${path}`;
   const langToggle = page.zh
     ? lang === "zh"
@@ -310,7 +312,8 @@ export function renderDocPage(page, lang, assets) {
   const body = `      <article>
 ${html}
       </article>
-      <p class="edit-row"><a href="${escape(editUrl)}" target="_blank" rel="noopener">${escape(t(lang).edit)}</a></p>`;
+      <p class="edit-row"><a href="${escape(editUrl)}" target="_blank" rel="noopener">${escape(t(lang).edit)}</a>
+        <a href="${escape(page.refUrl)}" target="_blank" rel="noopener">${escape(page.ref)}</a></p>`;
   return shell({
     title: `${title} · wdl.md`,
     docTitle: title,

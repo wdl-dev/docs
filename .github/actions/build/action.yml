@@ -7,21 +7,43 @@ description: Clone the source repos, generate src/content.gen.js, test and bundl
 runs:
   using: composite
   steps:
+    # Documentation ships with the software it documents: someone reading a page
+    # here and installing the released package must get the same thing. Failing
+    # loudly is the point — falling back to a branch would silently publish
+    # unreleased docs, which is the bug this step exists to prevent.
+    - name: Resolve each source repo's latest release
+      id: rel
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set -euo pipefail
+        for repo in wdl cli aws-sigv4; do
+          tag=$(gh api "repos/wdl-dev/$repo/releases/latest" --jq .tag_name)
+          echo "${repo//-/_}=$tag" >> "$GITHUB_OUTPUT"
+          echo "$repo -> $tag"
+        done
+
     - uses: actions/checkout@v6
       with:
         repository: wdl-dev/wdl
+        ref: ${{ steps.rel.outputs.wdl }}
         path: repos/wdl
         persist-credentials: false
     - uses: actions/checkout@v6
       with:
         repository: wdl-dev/cli
+        ref: ${{ steps.rel.outputs.cli }}
         path: repos/cli
         persist-credentials: false
     - uses: actions/checkout@v6
       with:
         repository: wdl-dev/aws-sigv4
+        ref: ${{ steps.rel.outputs.aws_sigv4 }}
         path: repos/aws-sigv4
         persist-credentials: false
+    # chat publishes no releases — it is a reference demo, not versioned
+    # software — so its default branch is the only thing there is to document.
     - uses: actions/checkout@v6
       with:
         repository: wdl-dev/chat

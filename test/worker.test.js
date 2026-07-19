@@ -193,6 +193,16 @@ test("the drawer button names itself, in the page's language", async () => {
   assert.ok((await (await get("/zh/cli/guide")).text()).includes('<span class="nav-text">目录</span>'));
 });
 
+test("a page names the version it was built from, and links to it", async () => {
+  const html = await (await get("/cli/guide")).text();
+  const row = /<p class="edit-row">[\s\S]*?<\/p>/.exec(html)[0];
+  assert.ok(row.includes("/blob/main/GUIDE.md"), "edit link left the default branch");
+  const ref = PAGES.find((p) => p.slug === "cli/guide").ref;
+  assert.ok(row.includes(`href="${PAGES.find((p) => p.slug === "cli/guide").refUrl}"`));
+  assert.ok(row.includes(`>${ref}</a>`), `version ${ref} not shown`);
+  for (const p of PAGES) assert.ok(p.ref && p.refUrl, `${p.slug}: no ref`);
+});
+
 test("favicon is linked from every page", async () => {
   const html = await (await get("/")).text();
   assert.ok(html.includes('<link rel="icon" href="/favicon.svg">'));
