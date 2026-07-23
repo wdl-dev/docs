@@ -286,6 +286,14 @@ function agentMarkdown(index, page, lang, source, title, sourcePath) {
 }
 
 async function main() {
+  for (const repo of ["wdl", "cli", "aws-sigv4", "chat"]) {
+    if (!(await exists(path.join(REPOS_DIR, repo)))) {
+      console.error(`source repo '${repo}' not found at ${path.join(REPOS_DIR, repo)}\n` +
+        "clone the wdl-dev repos next to this one, or pass --repos-dir <dir>.");
+      process.exit(1);
+    }
+  }
+
   const pages = [];
   const push = async (section, slug, repo, enPath, zhPath) => {
     const { en, zh } = await loadPair(repo, enPath, zhPath);
