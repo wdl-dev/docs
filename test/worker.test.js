@@ -70,6 +70,15 @@ test("documents are cacheable; routing and errors are not", async () => {
   }
 });
 
+test("/favicon.ico redirects to the real icon the asset store serves", async () => {
+  const env = { ASSETS: { url: async (f) => `https://assets.example/${f}` } };
+  const res = await worker.fetch(new Request("https://wdl.md/favicon.ico"), env);
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get("location"), "https://assets.example/favicon.svg");
+  // No binding locally: falls back to the root-relative path.
+  assert.equal((await get("/favicon.ico")).headers.get("location"), "/favicon.svg");
+});
+
 test("health answers on the platform domain, noindexed", async () => {
   const res = await get("/_worker-healthz", {}, "site.wdl.sh");
   assert.equal(res.status, 200);
@@ -102,6 +111,18 @@ test("sitemap.xml lists home plus every en and zh page", async () => {
   assert.equal((body.match(/<loc>/g) ?? []).length, expected);
   assert.ok(body.includes("<loc>https://wdl.md/cli/guide</loc>"));
   assert.ok(body.includes("<loc>https://wdl.md/zh/cli/guide</loc>"));
+  assert.equal((body.match(/<url>/g) ?? []).length, (body.match(/<\/url>/g) ?? []).length);
+  // Every page carries its source date; only the home entry has none.
+  assert.equal((body.match(/<lastmod>/g) ?? []).length, expected - 1);
+  // A bilingual page names both languages as alternates on both of its URLs;
+  // an untranslated page carries none.
+  const bilingual = PAGES.find((p) => p.zh).slug;
+  const solo = PAGES.find((p) => !p.zh).slug;
+  const entry = (loc) =>
+    body.match(new RegExp(`<url>\\s*<loc>${loc.replace(/[/.]/g, "\\$&")}</loc>[^]*?</url>`))[0];
+  assert.ok(entry(`https://wdl.md/${bilingual}`).includes(`hreflang="zh" href="https://wdl.md/zh/${bilingual}"`));
+  assert.ok(entry(`https://wdl.md/zh/${bilingual}`).includes(`hreflang="x-default" href="https://wdl.md/${bilingual}"`));
+  assert.ok(!entry(`https://wdl.md/${solo}`).includes("xhtml:link"));
 });
 
 test("llms.txt indexes every page in both languages", async () => {

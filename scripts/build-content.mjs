@@ -54,6 +54,7 @@ function refFor(repo) {
   const resolved = {
     ref,
     refUrl: tag ? `${ORG}/${repo}/releases/tag/${ref}` : `${ORG}/${repo}/tree/${ref}`,
+    date: gitIn(repo, ["log", "-1", "--format=%cs", "HEAD"]) || null,
   };
   refCache.set(repo, resolved);
   return resolved;
@@ -297,9 +298,9 @@ async function main() {
   const pages = [];
   const push = async (section, slug, repo, enPath, zhPath) => {
     const { en, zh } = await loadPair(repo, enPath, zhPath);
-    const { ref, refUrl } = refFor(repo);
+    const { ref, refUrl, date } = refFor(repo);
     pages.push({
-      slug, section, repo, ref, refUrl,
+      slug, section, repo, ref, refUrl, date,
       path: enPath,
       zhPath: zh ? zhPath : null,
       enSource: en,
@@ -371,6 +372,7 @@ async function main() {
       repo: p.repo,
       ref: p.ref,
       refUrl: p.refUrl,
+      date: p.date,
       en: one("en", p.enSource, p.path),
       zh: p.zhSource ? one("zh", p.zhSource, p.zhPath) : null,
     };

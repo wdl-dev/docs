@@ -435,6 +435,30 @@ const HOME_TOKENS = {
 
 // ---- crawler files ----
 
+// One <url> per page, children on their own indented lines so a browser's XML
+// view stays a tree. lastmod is the source release date; a bilingual page lists
+// both languages as alternates, which Google reads as one page, not duplicates.
+function sitemapUrl(loc, lastmod, alternates = []) {
+  const lines = [`    <loc>${escape(loc)}</loc>`];
+  if (lastmod) lines.push(`    <lastmod>${escape(lastmod)}</lastmod>`);
+  lines.push(...alternates);
+  return `  <url>\n${lines.join("\n")}\n  </url>`;
+}
+
+function sitemapEntries() {
+  const langLink = (hreflang, href) =>
+    `    <xhtml:link rel="alternate" hreflang="${hreflang}" href="${escape(href)}"/>`;
+  const entries = [sitemapUrl(SITE_URL)];
+  for (const p of PAGES) {
+    const en = `${SITE_URL}${p.slug}`;
+    if (!p.zh) { entries.push(sitemapUrl(en, p.date)); continue; }
+    const zh = `${SITE_URL}zh/${p.slug}`;
+    const alt = [langLink("en", en), langLink("zh", zh), langLink("x-default", en)];
+    entries.push(sitemapUrl(en, p.date, alt), sitemapUrl(zh, p.date, alt));
+  }
+  return entries;
+}
+
 const CRAWLER_FILES = {
   "/robots.txt": {
     type: "text/plain; charset=utf-8",
@@ -450,10 +474,8 @@ Sitemap: ${SITE_URL}sitemap.xml
     // Slugs come from upstream filenames, so they are escaped: one raw & would
     // make the whole document unparseable and drop every URL from the index.
     body: `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${["", ...PAGES.flatMap((p) => (p.zh ? [p.slug, `zh/${p.slug}`] : [p.slug]))]
-  .map((slug) => `  <url><loc>${escape(SITE_URL + slug)}</loc></url>`)
-  .join("\n")}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+${sitemapEntries().join("\n")}
 </urlset>
 `,
   },
@@ -576,6 +598,10 @@ export default {
         headers: { ...NOSNIFF, ...CACHEABLE, "content-type": crawlerFile.type },
       });
     }
+
+    // A browser on the .md or .xml views has no <link rel="icon"> and falls
+    // back to /favicon.ico; send it to the real one.
+    if (clean === "/favicon.ico") return redirect((await assetUrls(env)).faviconUrl);
 
     // "/.md" is excluded: its slug is empty, and stripping the suffix would
     // otherwise land it on the home page instead of a 404.

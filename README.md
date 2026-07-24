@@ -16,7 +16,8 @@ static assets through ASSETS, deployed with `wdl deploy`.
 - `/zh/<section>/<page>` — the Chinese variant where the source repo maintains
   one (`.zh.md` / `-zh.md`); pages without a variant redirect to English.
 - `/llms.txt` — machine-readable index for AI tooling; `/robots.txt` and
-  `/sitemap.xml` (every page, both languages) for crawlers.
+  `/sitemap.xml` (every page, with its source date and language alternates) for
+  crawlers.
 - SEO plumbing matching the site worker: a per-page description and
   `rel=canonical`/`og:url`, an `og:image` link card, `hreflang` alternates on
   bilingual pages, Organization/WebSite JSON-LD plus a per-doc TechArticle
@@ -101,9 +102,11 @@ point elsewhere.
 ## Deploy
 
 Deploys are CI-driven: `.github/workflows/deploy.yml` runs on every push to
-main, daily, and on manual dispatch — it clones the source repos, regenerates
-`src/content.gen.js`, runs the tests, and deploys. The corpus never enters git, so
-freshness is simply the newest run, and a manual dispatch is the immediate
+main, daily, and on manual dispatch — it checks out each source repo at its
+latest release (so a page here matches the package a reader installs; `chat`,
+which cuts no releases, tracks its default branch), regenerates
+`src/content.gen.js`, runs the tests, and deploys. The corpus never enters git,
+so freshness is simply the newest run, and a manual dispatch is the immediate
 "deploy now" button. The workflow needs the `WDL_DEPLOY_TOKEN` repo secret — a
 deploy token scoped to the `site` namespace, not an operator token, since
 deploying and pruning this one worker is all it is ever used for — passed to the
@@ -127,9 +130,9 @@ it at this worker, so the deploy serves `https://wdl.md/` directly.
 
 ## Not here yet
 
-- Content is a deploy-time snapshot, so the daily workflow bounds staleness at
-  one day. A `repository_dispatch` from the source repos would close that gap
-  and is the obvious next step.
+- Content tracks each source repo's latest release, and the daily workflow
+  picks up a new one within a day. A `repository_dispatch` on publish would make
+  it immediate and is the obvious next step.
 - No search. `/llms.txt` and find-in-page are the answer for now, and the corpus
   is around the size where that stops being enough.
 - Markdown is CommonMark plus tables and strikethrough. Footnotes, definition
