@@ -7,8 +7,8 @@ import assert from "node:assert/strict";
 import worker from "../src/index.js";
 import { PAGES } from "../src/content.gen.js";
 
-const get = (path, headers = {}, host = "wdl.md") =>
-  worker.fetch(new Request(`https://${host}${path}`, { headers }), {});
+const get = (path, headers = {}) =>
+  worker.fetch(new Request(`https://wdl.md${path}`, { headers }), {});
 
 const SITE = "https://wdl.md/";
 
@@ -19,12 +19,6 @@ const jsonLdOf = (html) => {
 };
 
 // ---- routing and methods ----
-
-test("non-canonical hosts get a 301 preserving path and query", async () => {
-  const res = await get("/cli/guide?x=1", {}, "site.wdl.sh");
-  assert.equal(res.status, 301);
-  assert.equal(res.headers.get("location"), "https://wdl.md/cli/guide?x=1");
-});
 
 test("a redirect never leaves this origin", async () => {
   // `//example.com` is a legal pathname; echoed into Location it would be a
@@ -39,15 +33,6 @@ test("only reads are answered", async () => {
   const res = await worker.fetch(new Request("https://wdl.md/cli/guide", { method: "POST" }), {});
   assert.equal(res.status, 405);
   assert.equal(res.headers.get("allow"), "GET, HEAD");
-});
-
-test("loopback is exempt from the canonical-host redirect", async () => {
-  // Otherwise a local run would bounce every request to production and be
-  // impossible to look at.
-  for (const host of ["localhost:8787", "127.0.0.1:8787", "[::1]:8787"]) {
-    const res = await get("/cli/guide", {}, host);
-    assert.equal(res.status, 200, host);
-  }
 });
 
 test("HEAD is routed like GET", async () => {
@@ -65,7 +50,7 @@ test("documents are cacheable; routing and errors are not", async () => {
       "public, max-age=21600, stale-while-revalidate=86400", path);
     assert.equal(res.headers.get("x-content-type-options"), "nosniff", path);
   }
-  for (const path of ["/guide", "/nope", "/_worker-healthz"]) {
+  for (const path of ["/guide", "/nope", "/.md"]) {
     assert.equal((await get(path)).headers.get("cache-control"), "no-store", path);
   }
 });
@@ -77,12 +62,6 @@ test("/favicon.ico redirects to the real icon the asset store serves", async () 
   assert.equal(res.headers.get("location"), "https://assets.example/favicon.svg");
   // No binding locally: falls back to the root-relative path.
   assert.equal((await get("/favicon.ico")).headers.get("location"), "/favicon.svg");
-});
-
-test("health answers on the platform domain, noindexed", async () => {
-  const res = await get("/_worker-healthz", {}, "site.wdl.sh");
-  assert.equal(res.status, 200);
-  assert.equal(res.headers.get("x-robots-tag"), "noindex");
 });
 
 test("/init redirects to an anchor that exists in the rendered guide", async () => {

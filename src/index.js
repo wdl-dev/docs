@@ -9,12 +9,10 @@ import { escape } from "./escape.js";
 
 const ORG = "https://github.com/wdl-dev";
 const SITE_URL = "https://wdl.md/";
-const { origin: SITE_ORIGIN, hostname: SITE_HOST } = new URL(SITE_URL);
+const { origin: SITE_ORIGIN } = new URL(SITE_URL);
 const DESCRIPTION =
   "wdl.md — the documentation for WDL, a self-hosted multi-tenant Workers platform: " +
   "architecture, module contracts, and the CLI guide, in English and Chinese.";
-// The WDL gateway owns /healthz on custom domains, so use a worker-specific path.
-const HEALTH_PATH = "/_worker-healthz";
 
 // Section display order; PAGES insertion order rules within a section.
 const SECTIONS = ["Platform", "Platform modules", "Operations", "CLI", "Libraries", "Apps"];
@@ -562,22 +560,6 @@ export default {
       const res = plain("Method not allowed\n", 405);
       res.headers.set("allow", "GET, HEAD");
       return res;
-    }
-    if (pathname === HEALTH_PATH) {
-      const res = plain("ok", 200);
-      res.headers.set("x-robots-tag", "noindex");
-      return res;
-    }
-    // Health above answers on the platform domain; everything else
-    // consolidates onto the canonical host, except loopback, where a redirect
-    // to production would make a local run impossible to look at. The target
-    // is rebuilt from SITE_URL because the gateway terminates TLS — the
-    // incoming scheme (plain http) must not leak into Location.
-    if (url.hostname !== SITE_HOST && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(url.hostname)) {
-      const target = new URL(SITE_URL);
-      target.pathname = pathname;
-      target.search = url.search;
-      return Response.redirect(target, 301);
     }
     // Leading slashes collapse as well as trailing ones: `//example.com` is a
     // legal pathname, and echoing it into Location would be a protocol-relative

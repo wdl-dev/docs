@@ -20,11 +20,9 @@ static assets through ASSETS, deployed with `wdl deploy`.
   crawlers.
 - SEO plumbing matching the site worker: a per-page description and
   `rel=canonical`/`og:url`, an `og:image` link card, `hreflang` alternates on
-  bilingual pages, Organization/WebSite JSON-LD plus a per-doc TechArticle
-  node, and a 301 from every non-canonical host to `wdl.md` (the health
-  endpoint keeps answering platform probes, `noindex`; loopback is left alone
-  so a local run stays reachable). Each `.md` twin sends a `Link: rel=canonical`
-  header pointing at its HTML page.
+  bilingual pages, and Organization/WebSite JSON-LD plus a per-doc TechArticle
+  node. Each `.md` twin sends a `Link: rel=canonical` header pointing at its
+  HTML page.
 - Reader UI: an EN/中文 toggle per page, a light/dark toggle (follows the
   system until first use), and a collapsible sidebar that becomes a drawer on
   phones — with a scrim, a scroll lock, Escape to close, and the content behind
@@ -127,6 +125,8 @@ npm run build:content && npm run deploy && npm run prune
 The `wdl.md` host is operator-declared for the namespace — the same mechanism
 that maps `wdl.dev` to the site worker — and `routes` in `wrangler.jsonc` points
 it at this worker, so the deploy serves `https://wdl.md/` directly.
+`workers_dev: false` there disables the `<ns>.<platform-domain>` URL, so the
+worker serves only on `wdl.md`.
 
 ## Not here yet
 
