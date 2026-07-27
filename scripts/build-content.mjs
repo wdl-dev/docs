@@ -135,7 +135,10 @@ export function summaryOf(md, limit = 155) {
 // code span holding <!-- is documentation that must survive.
 const CODE_OR_COMMENT = /(`+)(?:[^`\n]|\n(?!\s*\n))+\1|<!--[\s\S]*?-->/g;
 
-// Invisible on GitHub, but the renderer escapes them into visible text.
+// Invisible on GitHub, but the renderer escapes them into visible text. One
+// left-to-right pass, deliberately: a cut can splice its neighbours into
+// something comment-shaped (`<!-<!-- -->- x -->`), and a second pass would eat
+// the prose between them. rawHtmlFindings below reports the leftover.
 export const stripHtmlComments = (md) =>
   mapProse(md, (run) => run.replace(CODE_OR_COMMENT, (hit) => (hit.startsWith("<!--") ? "" : hit)));
 

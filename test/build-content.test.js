@@ -52,6 +52,10 @@ test("stripHtmlComments drops comments from prose, never from code", () => {
   assert.ok(stripHtmlComments("use `<!-- x -->` here").includes("`<!-- x -->`"));
 });
 
+test("a cut that splices a new comment must not eat the prose", () => {
+  assert.ok(stripHtmlComments("<!-<!-- -->- x -->").includes("x"));
+});
+
 test("a comment after an unmatched backtick is still stripped", () => {
   // The code-span guard must not span a blank line, or the comment hides inside
   // a fake span and renders as visible escaped text.

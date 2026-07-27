@@ -387,9 +387,9 @@ const estimateTokens = (s) => {
   return Math.ceil((s.length - cjk) / 4 + cjk);
 };
 
-// A title may legitimately contain brackets (see cli/env-overrides), which
-// would otherwise terminate the markdown link early.
-const mdText = (s) => s.replace(/([[\]])/g, "\\$1");
+// Titles become link labels, where an unpaired bracket ends the label early and
+// a trailing backslash escapes the `]` that closes it.
+export const escapeMd = (s) => s.replace(/([\\[\]])/g, "\\$1");
 
 const HOME_MD = [
   "# wdl.md — WDL documentation",
@@ -403,8 +403,8 @@ const HOME_MD = [
     `## ${section}`,
     "",
     ...pages.flatMap((p) => [
-      `- [${mdText(p.en.title)}](${SITE_ORIGIN}/${p.slug}.md)`,
-      ...(p.zh ? [`- [${mdText(p.zh.title)}](${SITE_ORIGIN}/zh/${p.slug}.md) (中文)`] : []),
+      `- [${escapeMd(p.en.title)}](${SITE_ORIGIN}/${p.slug}.md)`,
+      ...(p.zh ? [`- [${escapeMd(p.zh.title)}](${SITE_ORIGIN}/zh/${p.slug}.md) (中文)`] : []),
     ]),
     "",
   ]),

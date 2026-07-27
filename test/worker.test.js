@@ -4,7 +4,8 @@
 // markdown.test.js, and the agent contract in agents-md.test.js.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import worker from "../src/index.js";
+import MarkdownIt from "markdown-it";
+import worker, { escapeMd } from "../src/index.js";
 import { PAGES } from "../src/content.gen.js";
 
 const get = (path, headers = {}) =>
@@ -97,11 +98,23 @@ test("sitemap.xml lists home plus every en and zh page", async () => {
   // an untranslated page carries none.
   const bilingual = PAGES.find((p) => p.zh).slug;
   const solo = PAGES.find((p) => !p.zh).slug;
-  const entry = (loc) =>
-    body.match(new RegExp(`<url>\\s*<loc>${loc.replace(/[/.]/g, "\\$&")}</loc>[^]*?</url>`))[0];
+  // Split rather than build a regex out of a slug, which would need escaping.
+  const entry = (loc) => body.split("</url>").find((b) => b.includes(`<loc>${loc}</loc>`));
   assert.ok(entry(`https://wdl.md/${bilingual}`).includes(`hreflang="zh" href="https://wdl.md/zh/${bilingual}"`));
   assert.ok(entry(`https://wdl.md/zh/${bilingual}`).includes(`hreflang="x-default" href="https://wdl.md/${bilingual}"`));
   assert.ok(!entry(`https://wdl.md/${solo}`).includes("xhtml:link"));
+});
+
+test("any upstream title survives as a link label in the markdown index", () => {
+  // Synthetic on purpose: an upstream rename must not decide what this covers.
+  // The trailing backslash is the shape that breaks; CommonMark pairs brackets.
+  const md = new MarkdownIt();
+  for (const title of ["plain", "balanced [b] here", "unpaired [ here", "trailing \\"]) {
+    assert.equal(
+      md.renderInline(`[${escapeMd(title)}](${SITE}x.md)`),
+      `<a href="${SITE}x.md">${title}</a>`,
+    );
+  }
 });
 
 test("llms.txt indexes every page in both languages", async () => {
