@@ -74,7 +74,7 @@ const WDL_TOP = [
 /** cli topic order (README/GUIDE handled separately). */
 const CLI_TOPICS = [
   "deploy", "assets", "kv", "d1", "r2", "queues", "cron-triggers",
-  "durable-objects", "workflows", "secrets", "token", "env-overrides",
+  "durable-objects", "workflows", "ai", "secrets", "token", "env-overrides",
 ];
 
 // ---- reading a source doc ----
